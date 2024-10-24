@@ -15,6 +15,7 @@ use clap::{Parser, ValueHint};
 use console::Style;
 use indicatif::{MultiProgress, ProgressBar, ProgressDrawTarget, ProgressFinish, ProgressStyle};
 use lzma::LzmaReader;
+use zstd::Decoder;
 use memmap2::{Mmap, MmapMut};
 use prost::Message;
 use rayon::{ThreadPool, ThreadPoolBuilder};
@@ -217,6 +218,13 @@ impl Cmd {
                     .context("unable to initialize lzma decoder")?;
                 self.run_op_replace(&mut decoder, &mut dst_extents, block_size)
                     .context("error in REPLACE_XZ operation")
+            }
+            Some(Type::Zstd) => {
+                let data = self.extract_data(op, payload).context("error extracting data")?;
+                let mut decoder = Decoder::new(data)
+                    .context("unable to initialize zstd decoder")?;
+                self.run_op_replace(&mut decoder, &mut dst_extents, block_size)
+                    .context("error in Zstd operation")
             }
             Some(Type::Zero) => Ok(()), // This is a no-op since the partition is already zeroed
             Some(op) => bail!("unimplemented operation: {op:?}"),
