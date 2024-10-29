@@ -1,7 +1,6 @@
 name: release
 on:
   push:
-    branches: [mainline]
   pull_request:
   workflow_dispatch:
 env:
@@ -19,19 +18,19 @@ jobs:
         include:
 
           # MUSL Targets
-          - os: ubuntu-latest
-            target: x86_64-unknown-linux-musl
-          - os: ubuntu-latest
-            target: arm-unknown-linux-musleabihf
-          - os: ubuntu-latest
-            target: armv7-unknown-linux-musleabihf
-          - os: ubuntu-latest
-            target: aarch64-unknown-linux-musl
-          
+          # - os: ubuntu-latest
+          #   target: x86_64-unknown-linux-musl
+          # - os: ubuntu-latest
+          #   target: arm-unknown-linux-musleabihf
+          # - os: ubuntu-latest
+          #   target: armv7-unknown-linux-musleabihf
+          # - os: ubuntu-latest
+          #   target: aarch64-unknown-linux-musl
+
           # Darwin targets
-          - os: macos-11
-            target:
-              x86_64-apple-darwin
+          # - os: macos-11
+          #   target:
+          #     x86_64-apple-darwin
               # - os: macos-11
               #   target: aarch64-apple-darwin
 
@@ -45,13 +44,13 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@dc323e67f16fb5f7663d20ff7941f27f5809e9b6 # v2.6.0
+        uses: actions/checkout@main
         with:
           fetch-depth: 0
 
       - name: Get version
         id: get_version
-        uses: SebRollen/toml-action@2bd04b06a3ebc3e6a3eb6060de115710cad16cd6 # v1.0.2
+        uses: SebRollen/toml-action@main
         with:
           file: Cargo.toml
           field: package.version
@@ -65,7 +64,7 @@ jobs:
           target: ${{ matrix.target }}
 
       - name: Setup cache
-        uses: Swatinem/rust-cache@81d053bdb0871dcd3f10763c8cc60d0adc41762b # v1
+        uses: Swatinem/rust-cache@master
         with:
           key: ${{ matrix.target }}
 
@@ -83,23 +82,21 @@ jobs:
         with:
           version: "3.x"
 
-      - name: Install vcpkg on windows
-        if: runner.os == 'Windows'
-        uses: lukka/run-vcpkg@v11
-        with:
-          vcpkgDirectory: C:/vcpkg
-          doNotUpdateVcpkg: true
+      # - name: Install vcpkg on windows
+      #   if: runner.os == 'Windows'
+      #   uses: lukka/run-vcpkg@main
 
       - name: Install liblzma on windows
         if: runner.os == 'Windows'
         run: |
-          ${{ env.RUNVCPKG_VCPKG_ROOT }}/vcpkg.exe install liblzma --triplet ${{ matrix.triplet }}
+          vcpkg install liblzma --triplet ${{ matrix.triplet }}
+          vcpkg integrate install
 
       - name: Build binary
         uses: actions-rs/cargo@844f36862e911db73fe0815f00a4a2602c279505 # v1.0.3
         with:
           command: build
-          args: --release --locked --target=${{ matrix.target }} --color=always --verbose
+          args: --release --target=${{ matrix.target }} --color=always --verbose
           use-cross: ${{ runner.os == 'Linux' }}
 
       - name: Package for (*nix)
@@ -117,21 +114,21 @@ jobs:
           LICENSE README.md
           ./target/${{ matrix.target }}/release/otadump.exe
       - name: Upload artifact
-        uses: actions/upload-artifact@82c141cc518b40d92cc801eee768e7aafc9c2fa2 # v2.3.1
+        uses: actions/upload-artifact@main
         with:
           name: ${{ matrix.target }}
           path: |
             *.deb
             *.tar.gz
             *.zip
-      - name: Create release
-        if: ${{ github.ref == 'refs/heads/mainline' && startsWith(github.event.head_commit.message, 'chore(release)') }}
-        uses: softprops/action-gh-release@de2c0eb89ae2a093876385947365aca7b0e5f844 # v1
-        with:
-          draft: true
-          files: |
-            *.deb
-            *.tar.gz
-            *.zip
-          name: ${{ steps.get_version.outputs.value }}
-          tag_name: ""
+      # - name: Create release
+      #   if: ${{ github.ref == 'refs/heads/mainline' && startsWith(github.event.head_commit.message, 'chore(release)') }}
+      #   uses: softprops/action-gh-release@de2c0eb89ae2a093876385947365aca7b0e5f844 # v1
+      #   with:
+      #     draft: true
+      #     files: |
+      #       *.deb
+      #       *.tar.gz
+      #       *.zip
+      #     name: ${{ steps.get_version.outputs.value }}
+      #     tag_name: ""
